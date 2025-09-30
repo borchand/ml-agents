@@ -1,3 +1,27 @@
+# My additions 
+### Training with ML-Agents
+```
+// ppo
+mlagents-learn config/ppo/3DBall.yaml --run-id=<run_id> 
+```
+### Inference with ML-Agents (run trained model in Unity)
+```
+mlagents-learn config/ppo/3DBall.yaml --resume --run-id=<run_id> --inference
+```
+
+After running the above command, press the play button in the Unity Editor to see the trained model in action.
+
+
+### Trained model ids
+| Description                                | Run ID                  |
+|--------------------------------------------|-------------------------|
+| 3DBall PPO - Keep ball in center           | 3DBallRunCenter         |
+| 3DBall PPO - Keep ball in top right corner | 3DBallRunTopRightCorner |
+| 3DBall PPO - Alternate between corners  | 3DBallRunCorners        |
+
+
+
+
 # Unity ML-Agents Trainers
 
 The `mlagents` Python package is part of the

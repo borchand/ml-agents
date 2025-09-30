@@ -3,6 +3,7 @@ using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using Random = UnityEngine.Random;
+using System;
 
 public class Ball3DAgent : Agent
 {
@@ -13,6 +14,8 @@ public class Ball3DAgent : Agent
     public bool useVecObs;
     Rigidbody m_BallRb;
     EnvironmentParameters m_ResetParams;
+
+    TargetBehavior _behavior = TargetBehavior.ALTERNATECORNER;
 
     public override void Initialize()
     {
@@ -25,10 +28,13 @@ public class Ball3DAgent : Agent
     {
         if (useVecObs)
         {
+            var corner = GetCorner(StepCount / 200 % 4);
             sensor.AddObservation(gameObject.transform.rotation.z);
             sensor.AddObservation(gameObject.transform.rotation.x);
             sensor.AddObservation(ball.transform.position - gameObject.transform.position);
             sensor.AddObservation(m_BallRb.linearVelocity);
+            sensor.AddObservation(corner);
+            sensor.AddObservation(StepCount / 200);
         }
     }
 
@@ -48,16 +54,109 @@ public class Ball3DAgent : Agent
         {
             gameObject.transform.Rotate(new Vector3(1, 0, 0), actionX);
         }
-        if ((ball.transform.position.y - gameObject.transform.position.y) < -2f ||
-            Mathf.Abs(ball.transform.position.x - gameObject.transform.position.x) > 3f ||
-            Mathf.Abs(ball.transform.position.z - gameObject.transform.position.z) > 3f)
+
+        // we dont care about y axis as we already know its above the platform
+        var ballPos = new Vector2(ball.transform.position.x, ball.transform.position.z);
+        var agentPos = new Vector2(gameObject.transform.position.x, gameObject.transform.position.z);
+
+        switch (_behavior)
         {
-            SetReward(-1f);
-            EndEpisode();
+            case TargetBehavior.NORMAL:
+                if ((ball.transform.position.y - gameObject.transform.position.y) < -2f ||
+                    Mathf.Abs(ball.transform.position.x - gameObject.transform.position.x) > 3f ||
+                    Mathf.Abs(ball.transform.position.z - gameObject.transform.position.z) > 3f)
+                {
+                    SetReward(-1f);
+                    EndEpisode();
+                }
+                else
+                {
+                    SetReward(0.1f);
+                }
+                break;
+            case TargetBehavior.CENTER:
+
+                if ((ball.transform.position.y - gameObject.transform.position.y) < -2f ||
+                    Mathf.Abs(ball.transform.position.x - gameObject.transform.position.x) > 3f ||
+                    Mathf.Abs(ball.transform.position.z - gameObject.transform.position.z) > 3f)
+                {
+                    SetReward(-1f);
+                    EndEpisode();
+                }
+                else
+                {
+                    float distToCenter = Vector2.Distance(ballPos, agentPos);
+
+                    if (distToCenter < 0.5f)
+                    {
+                        SetReward(1.0f);
+                    }
+                    else
+                    {
+                        SetReward(0.1f);
+                    }
+                }
+                break;
+            case TargetBehavior.ONECORNER:
+                if ((ball.transform.position.y - gameObject.transform.position.y) < -2f ||
+                    Mathf.Abs(ball.transform.position.x - gameObject.transform.position.x) > 3f ||
+                    Mathf.Abs(ball.transform.position.z - gameObject.transform.position.z) > 3f)
+                {
+                    SetReward(-1f);
+                    EndEpisode();
+                }
+                else
+                {
+                    float distToCorner = Vector2.Distance(ballPos, agentPos + new Vector2(1.5f, 1.5f));
+
+                    if (distToCorner < 0.5f)
+                    {
+                        SetReward(1.0f);
+                    }
+                    else
+                    {
+                        SetReward(0.1f);
+                    }
+                }
+
+                break;
+            case TargetBehavior.ALTERNATECORNER:
+                if ((ball.transform.position.y - gameObject.transform.position.y) < -2f ||
+                    Mathf.Abs(ball.transform.position.x - gameObject.transform.position.x) > 3f ||
+                    Mathf.Abs(ball.transform.position.z - gameObject.transform.position.z) > 3f)
+                {
+                    SetReward(-1f);
+                    EndEpisode();
+                }
+                else
+                {
+                    var cornerIndex = StepCount / 200 % 4;
+
+                    var corner = GetCorner((int)cornerIndex);
+
+                    float distToAlternateCorner = Vector2.Distance(ballPos, agentPos + corner);
+
+                    SetReward(4.5f - distToAlternateCorner);
+                }
+                break;
         }
-        else
+
+    }
+
+    private Vector2 GetCorner(int cornerIndex)
+    {
+        switch (cornerIndex)
         {
-            SetReward(0.1f);
+            case 0:
+                return new Vector2(1.5f, 1.5f);
+            case 1:
+                return new Vector2(1.5f, -1.5f);
+            case 2:
+                return new Vector2(-1.5f, -1.5f);
+            case 3:
+                return new Vector2(-1.5f, 1.5f);
+            default:
+                return Vector2.zero;
         }
     }
 
@@ -92,4 +191,13 @@ public class Ball3DAgent : Agent
     {
         SetBall();
     }
+
+    enum TargetBehavior
+    {
+        NORMAL,
+        CENTER,
+        ONECORNER,
+        ALTERNATECORNER,
+    }
+
 }
